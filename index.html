@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>A simple HTML document</title>
+  </head>
+
+  <body>
+    <canvas
+      id="myCanvas"
+      width="500"
+      height="500"
+      style="border: 1px solid #000000"
+    >
+    </canvas>
+  </body>
+
+  <script>
+    const canvas = document.getElementById("myCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const keys = {};
+
+    const collisionSound = new Audio("src/sound/coinPop.mp3");
+    const gameOverSound = new Audio("src/sound/gameOverSound.mp3");
+    const titleMusic = new Audio("src/sound/TitleMusic.mp3");
+    const gameOver = new Image();
+    const crownSprite = new Image();
+    const titleScreen = new Image();
+    const canvasBackground = new Image();
+    const backgroundBlank = new Image();
+    const Cloud1 = new Image();
+    const Cloud2 = new Image();
+    const titleCard = new Image();
+    const head = new Image();
+    const body = new Image();
+    const tail = new Image();
+
+    gameOver.src = "src/img/gameover.png";
+    crownSprite.src = "src/img/CrownSprite.png";
+    titleScreen.src = "src/img/TitleScreen.png";
+    canvasBackground.src = "src/img/CanvasBackground.png";
+    backgroundBlank.src = "src/img/BackgroundBlank.png";
+    Cloud1.src = "src/img/Cloud1.png";
+    Cloud2.src = "src/img/Cloud2.png";
+    titleCard.src = "src/img/title.png";
+    head.src = "src/img/head.png";
+    body.src = "src/img/body.png";
+    tail.src = "src/img/tail.png";
+
+    //mute.src = "src/img/mute.png";
+    //unmute.src = "src/img/unmute.png";
+
+    // document.addEventListener("mousemove", function (event) {
+    //   const rectangle = canvas.getBoundingClientRect();
+    //   snake.x = event.clientX - rectangle.left;
+    //   snake.y = event.clientY - rectangle.top;
+    // });
+
+    let clouds = [
+      {
+        x: 10,
+        y: 80,
+        speed: 0.6,
+        cloudImage: Cloud2,
+      },
+      {
+        x: 150,
+        y: 10,
+        speed: 0.2,
+        cloudImage: Cloud2,
+      },
+      {
+        x: 160,
+        y: 160,
+        speed: 0.3,
+        cloudImage: Cloud1,
+      },
+      {
+        x: 0,
+        y: 40,
+        speed: 0.1,
+        cloudImage: Cloud1,
+      },
+      {
+        x: 100,
+        y: 40,
+        speed: 0.1,
+        cloudImage: Cloud1,
+      },
+      {
+        x: 0,
+        y: 40,
+        speed: 0.4,
+        cloudImage: Cloud2,
+      },
+    ];
+    let crownFloatAngle = 0;
+
+    function drawParallax() {
+      ctx.drawImage(backgroundBlank, 0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < clouds.length; i++) {
+        let offset = clouds[i].x + clouds[i].speed;
+
+        if (offset > 500) {
+          offset = -150;
+        }
+
+        clouds[i].x = offset;
+        ctx.drawImage(clouds[i].cloudImage, clouds[i].x, clouds[i].y, 150, 150);
+      }
+    }
+    document.addEventListener("keydown", function (event) {
+      keys[event.key.toLowerCase()] = true;
+    });
+    document.addEventListener("keyup", function (event) {
+      keys[event.key.toLowerCase()] = false;
+    });
+
+    function playPop() {
+      collisionSound.play();
+    }
+    function playGameOver() {
+      gameOverSound.play();
+    }
+    function playTitleMusic() {
+      titleMusic.play();
+    }
+
+    function startGame(e) {
+      console.log("Start Game.");
+      if (e.key === "Enter") {
+        isTitleScreen = false;
+        isGameOver = false;
+        document.removeEventListener("keydown", startGame);
+        resetGame();
+        gameLoop();
+      }
+    }
+    function titleScreenHandler() {
+      ctx.drawImage(titleCard, 0, 0, canvas.width, canvas.height);
+
+      titleMusic.loop = true;
+      titleMusic.volume = 0.01;
+      playTitleMusic();
+
+      document.addEventListener("keydown", startGame);
+
+      function blinkText() {
+        if (!isTitleScreen) return;
+        //ctx.drawImage(backgroundBlank, 0, 0, canvas.width, canvas.height);
+
+        drawParallax();
+        let floatY = Math.sin(crownFloatAngle) * 5; // 5px vertical float
+        crownFloatAngle += 0.05;
+
+        ctx.save();
+        ctx.shadowColor = "rgba(255, 255, 0, 0.7)";
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.drawImage(crownSprite, 175, 70 + floatY, 150, 150);
+        ctx.restore();
+        ctx.drawImage(titleCard, 0, 0, canvas.width, canvas.height);
+        if (frame % 30 < 15) {
+          ctx.fillStyle = "white";
+          ctx.font = "24px 'Press Start 2P'";
+          ctx.textAlign = "center";
+          ctx.fillText("Press Enter", canvas.width / 2, canvas.height - 100);
+        }
+
+        frame++;
+        requestAnimationFrame(blinkText);
+      }
+
+      blinkText();
+    }
+
+    function muteButtonHandler() {
+      //displays a mute button (mute.png). On click, the image changes to the unmute.png and plays title music
+      //The user is able to retoggle this at any point to turn title music off
+    }
+
+    //All global vars here
+
+    let coin = {
+      x: 0,
+      y: 0,
+      radius: 20,
+      speed: 2,
+      dx: 2,
+      dy: 2,
+    };
+
+    let box = {
+      x: 100,
+      y: 100,
+      speed: 6,
+      width: 50,
+      height: 50,
+    };
+
+    const playArea = {
+      x: 0,
+      y: 0,
+      width: canvas.width,
+      height: canvas.height,
+    };
+
+    const snake = {
+      x: 0,
+      y: 37,
+      speed: 0.5,
+      joints: 10,
+      jointDistance: 20,
+      direction: 0,
+    };
+
+    let gameObjects = {
+      score: 0,
+      highScore: 0,
+    };
+
+    let resetCoin = true;
+    let snakeJoints = [];
+    let isGameOver = false;
+    let crownOffset = 0;
+    let crownDirection = 1;
+    let frame = 0;
+    let isTitleScreen = true;
+    let blinkFrame = 0;
+    let gameOverCrownFloatAngle = 0;
+
+    function gameOverScreen() {
+      isGameOver = true;
+      snake.speed = 0.5;
+
+      let currentHighScore = Number(localStorage.getItem("high score"));
+      if (currentHighScore < gameObjects.score) {
+        localStorage.setItem("high score", gameObjects.score);
+      }
+
+      let floatAngle = 0;
+
+      function blinkText() {
+        if (!isGameOver) return;
+
+        ctx.drawImage(canvasBackground, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(gameOver, 0, 0, canvas.width, canvas.height);
+
+        // Floating glow crown above HIGH SCORE
+        let floatY = Math.sin(floatAngle) * 5;
+        floatAngle += 0.05;
+
+        ctx.save();
+        ctx.shadowColor = "rgba(255, 215, 0, 0.7)"; // gold glow
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Crown above the HIGH SCORE label
+        ctx.drawImage(
+          crownSprite,
+          canvas.width / 2 - 75,
+          canvas.height - 500 + floatY,
+          150,
+          150
+        );
+        ctx.restore();
+
+        // HIGH SCORE label
+        ctx.fillStyle = "white";
+        ctx.font = "24px 'Press Start 2P'";
+        ctx.textAlign = "center";
+        ctx.fillText("HIGH SCORE", canvas.width / 2, canvas.height - 340);
+
+        // Actual score value
+        ctx.fillText(gameObjects.score, canvas.width / 2, canvas.height - 300);
+
+        // Blinking "Press Enter"
+        if (blinkFrame % 30 < 15) {
+          ctx.fillText("Press Enter", canvas.width / 2, canvas.height - 150);
+        }
+
+        blinkFrame++;
+        requestAnimationFrame(blinkText);
+      }
+
+      blinkText();
+      document.addEventListener("keydown", startGame);
+    }
+
+    function resetGame() {
+      snake.x = 0;
+      snake.y = 37;
+      snake.direction = 0;
+
+      gameObjects.score = 0;
+
+      snakeJoints = createSnake();
+
+      spawnRandomCoin();
+
+      titleMusic.currentTime = 0;
+      titleMusic.play();
+    }
+
+    function scoreCounter(score) {
+      const boxWidth = 50;
+      const boxHeight = 30;
+      const x = canvas.width - boxWidth - 5;
+      const y = 5;
+
+      ctx.fillStyle = "violet";
+      ctx.fillRect(x, y, boxWidth, boxHeight);
+
+      ctx.fillStyle = "white";
+      ctx.font = "15px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(score, x + boxWidth / 2, y + boxHeight / 2);
+    }
+
+    function updateScore() {
+      gameObjects.score = gameObjects.score + 10;
+    }
+
+    //Display Highscore
+
+    function displayHighestScore() {
+      let currentHighScore = localStorage.getItem("high score");
+      console.log(currentHighScore);
+
+      if (currentHighScore === null) {
+        localStorage.setItem("high score", 0);
+      }
+
+      const boxWidth = 50;
+      const boxHeight = 30;
+      const x = canvas.width - boxWidth - 60;
+      const y = 5;
+
+      ctx.fillStyle = "violet";
+      ctx.fillRect(x, y, boxWidth, boxHeight);
+
+      ctx.fillStyle = "white";
+      ctx.font = "15px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(currentHighScore, x + boxWidth / 2, y + boxHeight / 2);
+    }
+
+    function calculateDistance(pointA, pointB) {
+      //Calculating the distance between two points
+      const dx = pointB.x - pointA.x;
+      const dy = pointB.y - pointA.y;
+
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function constrainDistance(point, anchor, length) {
+      let distance = calculateDistance(point, anchor);
+      if (distance === 0) {
+        return;
+      }
+
+      const ratio = length / distance;
+
+      const dx = point.x - anchor.x;
+      const dy = point.y - anchor.y;
+
+      (point.x = anchor.x + dx * ratio), (point.y = anchor.y + dy * ratio);
+    }
+
+    function createSnake() {
+      let snakeLength = [];
+      let newStart = {
+        x: 0,
+        y: 0,
+      };
+      for (let i = 0; i < snake.joints; i++) {
+        const joint = {
+          path: new Path2D(),
+          xStart: 0,
+          yStart: 0,
+          point: {
+            x: 0,
+            y: 0,
+          },
+        };
+
+        if (i === 0) {
+          joint.point.x = snake.x;
+          joint.point.y = snake.y;
+        } else {
+          joint.point.x = newStart.x;
+          joint.point.y = newStart.y;
+        }
+
+        newStart.x = joint.point.x - snake.jointDistance;
+        newStart.y = joint.point.y - snake.jointDistance;
+
+        snakeLength.push(joint);
+      }
+      return snakeLength;
+    }
+
+    snakeJoints = createSnake();
+
+    function checkCollision() {
+      let head = snakeJoints[0].point;
+      for (let i = 2; i < snakeJoints.length; i++) {
+        let currentJoint = snakeJoints[i].point;
+        let distance = calculateDistance(head, currentJoint);
+        if (distance < 10) {
+          isGameOver = true;
+          gameOverScreen();
+          titleMusic.pause();
+          titleMusic.currentTime = 0;
+          playGameOver();
+
+          return true;
+          console.log("Close");
+        }
+      }
+      return false;
+    }
+
+    function updateSnake() {
+      snakeJoints[0].point.x = snake.x;
+      snakeJoints[0].point.y = snake.y;
+
+      snakeJoints[0].path = new Path2D();
+
+      for (let i = 1; i < snakeJoints.length; i++) {
+        let point = snakeJoints[i].point;
+
+        let anchor = snakeJoints[i - 1].point;
+        snakeJoints[i].path = new Path2D();
+
+        constrainDistance(point, anchor, snake.jointDistance);
+      }
+    }
+
+    function addSnakeJoint() {
+      let lastJoint = snakeJoints[snakeJoints.length - 1];
+      let newJoint = {
+        path: new Path2D(),
+        point: {
+          x: 0,
+          y: 0,
+        },
+      };
+      newJoint.point.x = lastJoint.point.x + snake.jointDistance;
+      newJoint.point.y = lastJoint.point.y + snake.jointDistance;
+
+      snakeJoints.push(newJoint);
+    }
+
+    function drawPoint(x, y) {
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = "violet";
+      ctx.fill();
+    }
+    function drawSnakeDebug() {
+      // Set glow properties
+      ctx.strokeStyle = "violet";
+      ctx.lineWidth = 6;
+      ctx.shadowColor = "rgba(238, 130, 238, 0.4)"; // violet glow with alpha
+      ctx.shadowBlur = 10; // soft glow
+
+      for (let i = 0; i < snakeJoints.length; i++) {
+        let joint = snakeJoints[i];
+
+        // Draw the glowing path
+        ctx.stroke(joint.path);
+
+        // Draw the glowing dot
+        drawPoint(joint.point.x, joint.point.y);
+      }
+
+      // Reset shadows so they don’t affect other drawings
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+    }
+
+    function endGameHandler() {
+      isGameOver = true;
+      gameOverScreen();
+      titleMusic.pause();
+      titleMusic.currentTime = 0;
+      playGameOver();
+
+      return;
+    }
+
+    function spawnRandomCoin() {
+      const radius = coin.radius;
+      coin.x = Math.floor((Math.random() * canvas.width) / 2);
+      coin.y = Math.floor((Math.random() * canvas.height) / 2);
+    }
+    spawnRandomCoin();
+
+    // check current score against high score and update currentHighScore
+
+    function gameLoop(timestamp) {
+      // console.log(timestamp);
+      if (isGameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(canvasBackground, 0, 0, canvas.width, canvas.height);
+
+      if (
+        !(
+          snake.x >= 0 &&
+          snake.y >= 0 &&
+          snake.x <= canvas.width &&
+          snake.y <= canvas.height
+        )
+      ) {
+        isGameOver = true;
+        gameOverScreen();
+        titleMusic.pause();
+        titleMusic.currentTime = 0;
+        playGameOver();
+
+        return;
+      }
+
+      //Game Object Creation
+
+      updateSnake();
+      if (checkCollision() === true) {
+        isGameOver = true;
+        gameOverScreen();
+        titleMusic.pause();
+        titleMusic.currentTime = 0;
+        playGameOver();
+
+        return;
+      }
+      scoreCounter(gameObjects.score);
+
+      //Create all game objects dimensions
+
+      for (let i = 1; i < snakeJoints.length; i++) {
+        const joint = snakeJoints[i];
+        const previousJoint = snakeJoints[i - 1];
+        previousJoint.path.moveTo(previousJoint.point.x, previousJoint.point.y);
+        previousJoint.path.lineTo(joint.point.x, joint.point.y);
+      }
+
+      //All game calculations below this point
+
+      if (keys.a) snake.direction -= 0.02;
+      if (keys.d) snake.direction += 0.02;
+
+      //automatic movement
+      snake.x += Math.cos(snake.direction) * snake.speed;
+      snake.y += Math.sin(snake.direction) * snake.speed;
+
+      crownOffset += crownDirection * 0.3;
+      if (crownOffset > 5 || crownOffset < -5) {
+        crownDirection *= -1;
+      }
+
+      //After all calculations, draw
+
+      ctx.drawImage(
+        crownSprite,
+        coin.x - coin.radius,
+        coin.y - coin.radius + crownOffset,
+        coin.radius * 2,
+        coin.radius * 2
+      );
+
+      if (
+        snake.x > coin.x - coin.radius &&
+        snake.x < coin.x + coin.radius &&
+        snake.y > coin.y - coin.radius &&
+        snake.y < coin.y + coin.radius
+      ) {
+        updateScore();
+        playPop();
+        addSnakeJoint();
+        spawnRandomCoin();
+        snake.speed += 0.02;
+      }
+
+      drawSnakeDebug();
+      displayHighestScore();
+      frame++;
+      requestAnimationFrame(gameLoop);
+    }
+
+    titleScreen.onload = titleScreenHandler;
+  </script>
+</html>
